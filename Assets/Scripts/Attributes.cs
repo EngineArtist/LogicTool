@@ -1,8 +1,6 @@
 ﻿using System.Collections.Generic;
 using UnityEditor;
-using UnityEditor.UIElements;
 using UnityEngine;
-using UnityEngine.UIElements;
 using System;
 
 
@@ -14,100 +12,170 @@ public enum AttributeType {
 }
 
 
-[Serializable]
-public struct Attribute: IAttribute {
-    public AttributeType type;
-    public ScriptableObject value;
+public static class AttributeTypeExtension {
+    public static Type ToType(this AttributeType t) {
+        switch (t) {
+            case AttributeType.Int: return typeof(int);
+            case AttributeType.Float: return typeof(float);
+            case AttributeType.String: return typeof(string);
+            default: return null;
+        }
+    }
 
-    public AttributeType Type {get => type;}
-    public int Int {get => ((IAttribute)(object)value).Int;}
-    public float Float {get => ((IAttribute)(object)value).Float;}
-    public string String {get => ((IAttribute)(object)value).String;}
+    public static AttributeType ToAttributeType(this Type t) {
+        if      (t == null) return AttributeType.None;
+        else if (t == typeof(int)) return AttributeType.Int;
+        else if (t == typeof(float)) return AttributeType.Float;
+        else if (t == typeof(string)) return AttributeType.String;
+        else return AttributeType.None;
+    }
+}
+
+
+[Serializable]
+public struct Attribute {
+    public string _name;
+    public AttributeType _type;
+    [SerializeReference] public IAttribute _value;
+
+    public string Name {get => _name; set => _name = value;}
+    public AttributeType Type {get => _value.Type;}
+    public object Value {get => _value.Value; set => _value.Value = value;}
+    public int Int {get => _value.Int; set => _value.Int = value;}
+    public float Float {get => _value.Float; set => _value.Float = value;}
+    public string String {get => _value.String; set => _value.String = value;}
 }
 
 
 public interface IAttribute {
     AttributeType Type {get;}
-    int Int {get;}
-    float Float {get;}
-    string String {get;}
+    object Value {get; set;}
+    int Int {get; set;}
+    float Float {get; set;}
+    string String {get; set;}
 }
 
 
 public class Attributes: MonoBehaviour {
     public List<Attribute> attributes;
+
+    public IAttribute Get(string name) {
+        for (int i = 0; i < attributes.Count; ++i) {
+            if (attributes[i]._name == name) {
+                return attributes[i]._value;
+            }
+        }
+        return null;
+    }
+
+    public T Get<T>(string name) {
+        for (int i = 0; i < attributes.Count; ++i) {
+            if (attributes[i]._name == name) {
+                return (T)attributes[i].Value;
+            }
+        }
+        return default(T);
+    }
+
+    public void Set(string name, object value) {
+        for (int i = 0; i < attributes.Count; ++i) {
+            if (attributes[i]._name == name) {
+                attributes[i]._value.Value = value;
+            }
+        }
+    }
+
+    public void Set<T>(string name, T value) {
+        Set(name, value);
+    }
+}
+
+public static class AttributeExtensions {
+    public static IAttribute Get(this GameObject gobj, string name) {
+        var attr = gobj.GetComponent<Attributes>();
+        if (attr == null) return null;
+        return attr.Get(name);
+    }
+
+    public static T Get<T>(this GameObject gobj, string name) {
+        var attr = gobj.GetComponent<Attributes>();
+        if (attr == null) return default(T);
+        return attr.Get<T>(name);
+    }
+
+    public static void Set(this GameObject gobj, string name, object value) {
+        var attr = gobj.GetComponent<Attributes>();
+        if (attr == null) return;
+        attr.Set(name, value);
+    }
+
+    public static void Set<T>(this GameObject gobj, string name, T value) {
+        var attr = gobj.GetComponent<Attributes>();
+        if (attr == null) return;
+        attr.Set<T>(name, value);
+    }
 }
 
 
 [CustomPropertyDrawer(typeof(Attribute))]
 public class AttributeDrawer: PropertyDrawer {
     public override float GetPropertyHeight(SerializedProperty property, GUIContent label) {
-        switch (property.FindPropertyRelative("type").enumValueIndex) {
-            case 0: return 16f;
-            default: return 32f;
+        var attrType = (AttributeType)property.FindPropertyRelative("_type").enumValueIndex;
+        switch (attrType) {
+            case AttributeType.Int: {return 56f;}
+            case AttributeType.Float: {return 56f;}
+            case AttributeType.String: {return 56f;}
+            default: {return 40f;}
         }
     }
 
     public override void OnGUI(Rect position, SerializedProperty property, GUIContent label) {
-        var type = property.FindPropertyRelative("type");
-        var value = property.FindPropertyRelative("value");
-        if (value.objectReferenceValue == null) {
-            value.objectReferenceValue = ScriptableObject.CreateInstance(typeof(AttributeNone));
-            type.enumValueIndex = 0;
-        }
-
         EditorGUI.BeginProperty(position, label, property);
-        AttributeType attrType = AttributeType.None;
-        Enum.TryParse<AttributeType>(type.enumNames[type.enumValueIndex], out attrType);
-        var selType = (AttributeType)EditorGUI.EnumPopup(new Rect(position.x, position.y, position.width, 16f), attrType);
-        if (attrType != selType) {
-            type.enumValueIndex = (int)selType;
+        var _name = property.FindPropertyRelative("_name");
+        var newName = EditorGUI.TextField(new Rect(position.x, position.y, position.width, 16f), _name.stringValue);
+        if (newName != _name.stringValue) {
+            _name.stringValue = newName;
+        }
+        var _type = property.FindPropertyRelative("_type");
+        var attrType = (AttributeType)_type.enumValueIndex;
+        var selType = (AttributeType)EditorGUI.EnumPopup(new Rect(position.x, position.y + 16f, position.width, 16f), "Type", attrType);
+        var _value = property.FindPropertyRelative("_value");
+        if (selType != attrType) {
+            _type.enumValueIndex = (int)selType;
             switch (selType) {
                 case AttributeType.None: {
-                    value.objectReferenceValue = ScriptableObject.CreateInstance(typeof(AttributeNone));
+                    _value.managedReferenceValue = null;
                     break;
                 }
                 case AttributeType.Int: {
-                    value.objectReferenceValue = ScriptableObject.CreateInstance(typeof(AttributeInt));
+                    _value.managedReferenceValue = new AttributeInt();
                     break;
                 }
                 case AttributeType.Float: {
-                    value.objectReferenceValue = ScriptableObject.CreateInstance(typeof(AttributeFloat));
+                    _value.managedReferenceValue = new AttributeFloat();
                     break;
                 }
                 case AttributeType.String: {
-                    value.objectReferenceValue = ScriptableObject.CreateInstance(typeof(AttributeString));
+                    _value.managedReferenceValue = new AttributeString();
                     break;
                 }
             }
         }
-        var attrRef = (IAttribute)(object)value.objectReferenceValue;
-        switch (attrRef.Type) {
+        _value = property.FindPropertyRelative("_value");
+        switch (selType) {
             case AttributeType.None: {
                 break;
             }
             case AttributeType.Int: {
-                var attr = (AttributeInt)(object)value.objectReferenceValue;
-                var i = EditorGUI.IntField(new Rect(position.x, position.y + 16f, position.width, 16f), attr.value);
-                if (i != attr.value) {
-                    attr.value = i;
-                }
+                EditorGUI.PropertyField(new Rect(position.x, position.y + 32f, position.width, 16f), _value.FindPropertyRelative("_value"));
                 break;
             }
             case AttributeType.Float: {
-                var attr = (AttributeFloat)(object)value.objectReferenceValue;
-                var f = EditorGUI.FloatField(new Rect(position.x, position.y + 16f, position.width, 16f), attr.value);
-                if (f != attr.value) {
-                    attr.value = f;
-                }
+                EditorGUI.PropertyField(new Rect(position.x, position.y + 32f, position.width, 16f), _value.FindPropertyRelative("_value"));
                 break;
             }
             case AttributeType.String: {
-                var attr = (AttributeString)(object)value.objectReferenceValue;
-                var s = EditorGUI.TextField(new Rect(position.x, position.y + 16f, position.width, 16f), attr.value);
-                if (s != attr.value) {
-                    attr.value = s;
-                }
+                EditorGUI.PropertyField(new Rect(position.x, position.y + 32f, position.width, 16f), _value.FindPropertyRelative("_value"));
                 break;
             }
         }

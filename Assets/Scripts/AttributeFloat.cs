@@ -1,13 +1,13 @@
 ﻿using System;
-using UnityEngine;
 
 
 [Serializable]
-public class AttributeFloat: ScriptableObject, IAttribute {
-    public float value;
+public class AttributeFloat: IAttribute {
+    public float _value;
 
     public AttributeType Type {get => AttributeType.Float;}
-    public int Int {get => (int)value;}
-    public float Float {get => value;}
-    public string String {get => null;}
+    public object Value {get => (object)_value; set => _value = (float)value;}
+    public int Int {get => (int)_value; set => _value = (float)value;}
+    public float Float {get => _value; set => _value = value;}
+    public string String {get => null; set {}}
 }
