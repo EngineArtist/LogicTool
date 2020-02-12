@@ -34,11 +34,11 @@ public static class AttributeTypeExtension {
 
 [Serializable]
 public struct Attribute {
-    public string _name;
-    public AttributeType _type;
+    public string name;
+    public AttributeType type;
     [SerializeReference] public IAttribute _value;
 
-    public string Name {get => _name; set => _name = value;}
+    public string Name {get => name; set => name = value;}
     public AttributeType Type {get => _value.Type;}
     public object Value {get => _value.Value; set => _value.Value = value;}
     public int Int {get => _value.Int; set => _value.Int = value;}
@@ -61,7 +61,7 @@ public class Attributes: MonoBehaviour {
 
     public IAttribute Get(string name) {
         for (int i = 0; i < attributes.Count; ++i) {
-            if (attributes[i]._name == name) {
+            if (attributes[i].name == name) {
                 return attributes[i]._value;
             }
         }
@@ -70,7 +70,7 @@ public class Attributes: MonoBehaviour {
 
     public T Get<T>(string name) {
         for (int i = 0; i < attributes.Count; ++i) {
-            if (attributes[i]._name == name) {
+            if (attributes[i].name == name) {
                 return (T)attributes[i].Value;
             }
         }
@@ -79,7 +79,7 @@ public class Attributes: MonoBehaviour {
 
     public void Set(string name, object value) {
         for (int i = 0; i < attributes.Count; ++i) {
-            if (attributes[i]._name == name) {
+            if (attributes[i].name == name) {
                 attributes[i]._value.Value = value;
             }
         }
@@ -120,7 +120,7 @@ public static class AttributeExtensions {
 [CustomPropertyDrawer(typeof(Attribute))]
 public class AttributeDrawer: PropertyDrawer {
     public override float GetPropertyHeight(SerializedProperty property, GUIContent label) {
-        var attrType = (AttributeType)property.FindPropertyRelative("_type").enumValueIndex;
+        var attrType = (AttributeType)property.FindPropertyRelative("type").enumValueIndex;
         switch (attrType) {
             case AttributeType.Int: {return 56f;}
             case AttributeType.Float: {return 56f;}
@@ -131,12 +131,12 @@ public class AttributeDrawer: PropertyDrawer {
 
     public override void OnGUI(Rect position, SerializedProperty property, GUIContent label) {
         EditorGUI.BeginProperty(position, label, property);
-        var _name = property.FindPropertyRelative("_name");
+        var _name = property.FindPropertyRelative("name");
         var newName = EditorGUI.TextField(new Rect(position.x, position.y, position.width, 16f), _name.stringValue);
         if (newName != _name.stringValue) {
             _name.stringValue = newName;
         }
-        var _type = property.FindPropertyRelative("_type");
+        var _type = property.FindPropertyRelative("type");
         var attrType = (AttributeType)_type.enumValueIndex;
         var selType = (AttributeType)EditorGUI.EnumPopup(new Rect(position.x, position.y + 16f, position.width, 16f), "Type", attrType);
         var _value = property.FindPropertyRelative("_value");
