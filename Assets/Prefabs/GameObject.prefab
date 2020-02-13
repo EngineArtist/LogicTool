@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7350035454545229793}
   - component: {fileID: 7350035454545229794}
+  - component: {fileID: 2049176806}
   m_Layer: 0
   m_Name: GameObject
   m_TagString: Untagged
@@ -44,29 +45,40 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   attributes:
-  - _name: 
-    _type: 1
+  - name: a
+    type: 3
     _value:
       id: 0
-  - _name: 
-    _type: 2
+  - name: bc
+    type: 2
     _value:
       id: 1
-  - _name: 
-    _type: 3
-    _value:
-      id: 2
   references:
     version: 1
     00000000:
-      type: {class: AttributeInt, ns: , asm: Assembly-CSharp}
-      data:
-        _value: 7
-    00000001:
-      type: {class: AttributeFloat, ns: , asm: Assembly-CSharp}
-      data:
-        _value: 2.5
-    00000002:
       type: {class: AttributeString, ns: , asm: Assembly-CSharp}
       data:
         _value: asdf
+    00000001:
+      type: {class: AttributeFloat, ns: , asm: Assembly-CSharp}
+      data:
+        _value: 7.5
+--- !u!114 &2049176806
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7350035454545229795}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f34d2006dda6ff94b9e15260af6038c8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  outputs:
+  - target: {fileID: 0}
+    slot: 
+    args: []
+  inputs: []
+  references:
+    version: 1
