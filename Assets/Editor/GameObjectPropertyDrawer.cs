@@ -3,141 +3,81 @@ using UnityEngine;
 using UnityEditor;
 
 
-[CustomPropertyDrawer(typeof(GameObject))]
-public class GameObjectPropertyDrawer: PropertyDrawer {
-    public static Dictionary<string, Texture> icons = new Dictionary<string, Texture>();
+public class PropertyDrawerUtils {
+    public static Dictionary<string, Texture2D> icons = new Dictionary<string, Texture2D>();
     public static bool objectPickerMode = false;
-    public static GameObjectPropertyDrawer pickedDrawer = null;
+    public static int pickedDrawerID = 0;
     public static GameObject pickedObject = null;
     public static bool callbackRegistered = false;
+    public static int currentPropertyDrawerID = 0;
 
+    public static void ResetPropertyDrawerID() {
+        currentPropertyDrawerID = 0;
+    }
 
-    public static Texture GetIcon(string name) {
-        Texture result = null;
+    public static void UpdateCallback(SceneView view) {
+        if (PropertyDrawerUtils.objectPickerMode) {
+            var cur = Event.current;
+            switch (cur.type) {
+                case EventType.Layout: {
+                    HandleUtility.AddDefaultControl(0);
+                    break;
+                }
+                case EventType.MouseUp: {
+                    PropertyDrawerUtils.pickedObject = HandleUtility.PickGameObject(Event.current.mousePosition, true);
+                    PropertyDrawerUtils.objectPickerMode = false;
+                    foreach (var c in Selection.activeGameObject.GetComponents<Component>()) {
+                        EditorUtility.SetDirty(c);
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    public static Texture2D GetIcon(string name) {
+        Texture2D result = null;
         if (!icons.TryGetValue(name, out result)) {
             var guids = AssetDatabase.FindAssets(name);
             if (guids.Length > 0) {
-                result = AssetDatabase.LoadAssetAtPath<Texture>(AssetDatabase.GUIDToAssetPath(guids[0]));
+                result = AssetDatabase.LoadAssetAtPath<Texture2D>(AssetDatabase.GUIDToAssetPath(guids[0]));
                 icons[name] = result;
             }
         }
         return result;
     }
-
-    public override void OnGUI(Rect position, SerializedProperty property, GUIContent label) {
-        if (!callbackRegistered) {
-            callbackRegistered = true;
-            SceneView.duringSceneGui -= UpdateCallback;
-            SceneView.duringSceneGui += UpdateCallback;
-        }
-        if (!objectPickerMode && pickedDrawer == this) {
-            property.objectReferenceValue = pickedObject;
-            pickedObject = null;
-            pickedDrawer = null;
-        }
-        EditorGUI.BeginProperty(position, label, property);
-        position = EditorGUI.PrefixLabel(position, GUIUtility.GetControlID(FocusType.Passive), label);
-        var fieldRect = new Rect(position.x - 15f, position.y, position.width - 20f, position.height);
-        EditorGUI.PropertyField(fieldRect, property, GUIContent.none);
-        var pickerRect = new Rect(position.x + position.width - 33f, position.y, position.height, position.height);
-        if (GUI.Button(pickerRect, "")) {
-            objectPickerMode = !objectPickerMode;
-            if (objectPickerMode) pickedDrawer = this;
-            else pickedDrawer = null;
-        }
-        GUI.DrawTexture(pickerRect, GetIcon("object_picker_16"), ScaleMode.ScaleAndCrop, true);
-        var deleteRect = new Rect(position.x + position.width - 16f, position.y, position.height, position.height);
-        var c = GUI.backgroundColor;
-        GUI.backgroundColor = new Color(1f, .4f, .1f);
-        if (GUI.Button(deleteRect, "")) {
-            objectPickerMode = false;
-            pickedDrawer = null;
-            property.objectReferenceValue = null;
-        }
-        GUI.DrawTexture(deleteRect, GetIcon("object_delete_16"), ScaleMode.ScaleAndCrop, true);
-        GUI.backgroundColor = c;
-        EditorGUI.EndProperty();
-    }
-
-    public void UpdateCallback(SceneView view) {
-        if (objectPickerMode) {
-            var cur = Event.current;
-            switch (cur.type) {
-                case EventType.Layout: {
-                    HandleUtility.AddDefaultControl(0);
-                    break;
-                }
-                case EventType.MouseUp: {
-                    pickedObject = HandleUtility.PickGameObject(Event.current.mousePosition, true);
-                    objectPickerMode = false;
-                    foreach (var c in Selection.activeGameObject.GetComponents<Component>()) {
-                        EditorUtility.SetDirty(c);
-                    }
-                    break;
-                }
-            }
-        }
-    }
 }
 
-[CustomPropertyDrawer(typeof(Component), true)]
-public class ComponentPropertyDrawer: PropertyDrawer{
 
-    public static bool objectPickerMode = false;
-    public static ComponentPropertyDrawer pickedDrawer = null;
-    public static GameObject pickedObject = null;
-    public static bool callbackRegistered = false;
-
-
-    public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
-    {
-        if (!callbackRegistered) {
-            callbackRegistered = true;
-            SceneView.duringSceneGui -= UpdateCallback;
-            SceneView.duringSceneGui += UpdateCallback;
+[CustomPropertyDrawer(typeof(GameObject))]
+public class GameObjectPropertyDrawer: PropertyDrawer {
+    public override void OnGUI(Rect position, SerializedProperty property, GUIContent label) {
+        ++PropertyDrawerUtils.currentPropertyDrawerID;
+        if (!PropertyDrawerUtils.callbackRegistered) {
+            PropertyDrawerUtils.callbackRegistered = true;
+            EditorApplication.update -= PropertyDrawerUtils.ResetPropertyDrawerID;
+            EditorApplication.update += PropertyDrawerUtils.ResetPropertyDrawerID;
+            SceneView.duringSceneGui -= PropertyDrawerUtils.UpdateCallback;
+            SceneView.duringSceneGui += PropertyDrawerUtils.UpdateCallback;
         }
-        if (!objectPickerMode && pickedDrawer == this) {
-            property.objectReferenceValue = pickedObject;
-            pickedObject = null;
-            pickedDrawer = null;
+        if (!PropertyDrawerUtils.objectPickerMode && PropertyDrawerUtils.pickedDrawerID == PropertyDrawerUtils.currentPropertyDrawerID) {
+            property.objectReferenceValue = PropertyDrawerUtils.pickedObject;
+            PropertyDrawerUtils.pickedObject = null;
+            PropertyDrawerUtils.pickedDrawerID = 0;
         }
         EditorGUI.BeginProperty(position, label, property);
-        position = EditorGUI.PrefixLabel(position, GUIUtility.GetControlID(FocusType.Passive), label);
-        var fieldRect = new Rect(position.x, position.y, position.width - 37f, position.height);
-        EditorGUI.PropertyField(fieldRect, property, GUIContent.none);
-        var pickerRect = new Rect(position.x + position.width - 33f, position.y, position.height, position.height);
+        property.objectReferenceValue = EditorGUI.ObjectField(new Rect(position.x, position.y, position.width - position.height, position.height), label, property.objectReferenceValue, typeof(GameObject), true);
+        var pickerRect = new Rect(position.x + position.width - position.height, position.y, position.height, position.height);
         if (GUI.Button(pickerRect, "")) {
-            objectPickerMode = !objectPickerMode;
-            if (objectPickerMode) pickedDrawer = this;
-            else pickedDrawer = null;
-        }
-        GUI.DrawTexture(pickerRect, GameObjectPropertyDrawer.GetIcon("object_picker_16"), ScaleMode.ScaleAndCrop, true);
-        var deleteRect = new Rect(position.x + position.width - 16f, position.y, position.height, position.height);
-        var c = GUI.backgroundColor;
-        GUI.backgroundColor = new Color(1f, .4f, .1f);
-        if (GUI.Button(deleteRect, "")) property.objectReferenceValue = null;
-        GUI.DrawTexture(deleteRect, GameObjectPropertyDrawer.GetIcon("object_delete_16"), ScaleMode.ScaleAndCrop, true);
-        GUI.backgroundColor = c;
-        EditorGUI.EndProperty();
-    }
-
-    public void UpdateCallback(SceneView view) {
-        if (objectPickerMode) {
-            var cur = Event.current;
-            switch (cur.type) {
-                case EventType.Layout: {
-                    HandleUtility.AddDefaultControl(0);
-                    break;
-                }
-                case EventType.MouseUp: {
-                    pickedObject = HandleUtility.PickGameObject(Event.current.mousePosition, true);
-                    objectPickerMode = false;
-                    foreach (var c in Selection.activeGameObject.GetComponents<Component>()) {
-                        EditorUtility.SetDirty(c);
-                    }
-                    break;
-                }
+            PropertyDrawerUtils.objectPickerMode = !PropertyDrawerUtils.objectPickerMode;
+            if (PropertyDrawerUtils.objectPickerMode) {
+                PropertyDrawerUtils.pickedDrawerID = PropertyDrawerUtils.currentPropertyDrawerID;
+            }
+            else {
+                PropertyDrawerUtils.pickedDrawerID = 0;
             }
         }
+        GUI.DrawTexture(pickerRect, PropertyDrawerUtils.GetIcon("object_picker_16"), ScaleMode.ScaleAndCrop, true);
+        EditorGUI.EndProperty();
     }
 }
