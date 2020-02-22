@@ -59,6 +59,24 @@ public static class AttributeTypeExtension {
 }
 
 
+public interface IAttribute {
+    AttributeType Type {get;}
+    object Value {get; set;}
+    int Int {get; set;}
+    float Float {get; set;}
+    string String {get; set;}
+    Vector2 Vector2 {get; set;}
+    Vector3 Vector3 {get; set;}
+    Vector4 Vector4 {get; set;}
+    Color Color {get; set;}
+    Rect Rect {get; set;}
+    //Matrix4x4 Matrix4x4 {get; set;}
+    UnityEngine.Object Object {get; set;}
+    GameObject GameObject {get; set;}
+    Component Component {get; set;}
+}
+
+
 [Serializable]
 public struct Attribute {
     public string name;
@@ -83,81 +101,52 @@ public struct Attribute {
 }
 
 
-public interface IAttribute {
-    AttributeType Type {get;}
-    object Value {get; set;}
-    int Int {get; set;}
-    float Float {get; set;}
-    string String {get; set;}
-    Vector2 Vector2 {get; set;}
-    Vector3 Vector3 {get; set;}
-    Vector4 Vector4 {get; set;}
-    Color Color {get; set;}
-    Rect Rect {get; set;}
-    //Matrix4x4 Matrix4x4 {get; set;}
-    UnityEngine.Object Object {get; set;}
-    GameObject GameObject {get; set;}
-    Component Component {get; set;}
-}
-
-
 public class Attributes: MonoBehaviour {
     public List<Attribute> attributes;
-
-    public IAttribute Get(string name) {
-        for (int i = 0; i < attributes.Count; ++i) {
-            if (attributes[i].name == name) {
-                return attributes[i]._value;
-            }
-        }
-        return null;
-    }
-
-    public T Get<T>(string name) {
-        for (int i = 0; i < attributes.Count; ++i) {
-            if (attributes[i].name == name) {
-                return (T)attributes[i].Value;
-            }
-        }
-        return default(T);
-    }
-
-    public void Set(string name, object value) {
-        for (int i = 0; i < attributes.Count; ++i) {
-            if (attributes[i].name == name) {
-                attributes[i]._value.Value = value;
-            }
-        }
-    }
-
-    public void Set<T>(string name, T value) {
-        Set(name, value);
-    }
 }
+
 
 public static class AttributeExtensions {
     public static IAttribute Get(this GameObject gobj, string name) {
         var attr = gobj.GetComponent<Attributes>();
         if (attr == null) return null;
-        return attr.Get(name);
+        for (int i = 0; i < attr.attributes.Count; ++i) {
+            if (attr.attributes[i].name == name) {
+                return attr.attributes[i]._value;
+            }
+        }
+        return null;
     }
 
     public static T Get<T>(this GameObject gobj, string name) {
         var attr = gobj.GetComponent<Attributes>();
         if (attr == null) return default(T);
-        return attr.Get<T>(name);
+        for (int i = 0; i < attr.attributes.Count; ++i) {
+            if (attr.attributes[i].name == name) {
+                return (T)attr.attributes[i].Value;
+            }
+        }
+        return default(T);
     }
 
     public static void Set(this GameObject gobj, string name, object value) {
         var attr = gobj.GetComponent<Attributes>();
         if (attr == null) return;
-        attr.Set(name, value);
+        for (int i = 0; i < attr.attributes.Count; ++i) {
+            if (attr.attributes[i].name == name) {
+                attr.attributes[i]._value.Value = value;
+            }
+        }
     }
 
     public static void Set<T>(this GameObject gobj, string name, T value) {
         var attr = gobj.GetComponent<Attributes>();
         if (attr == null) return;
-        attr.Set<T>(name, value);
+        for (int i = 0; i < attr.attributes.Count; ++i) {
+            if (attr.attributes[i].name == name) {
+                attr.attributes[i]._value.Value = value;
+            }
+        }
     }
 }
 
@@ -168,19 +157,19 @@ public class AttributeDrawer: PropertyDrawer {
         if (property.isExpanded) {
             var attrType = (AttributeType)property.FindPropertyRelative("type").enumValueIndex;
             switch (attrType) {
-                case AttributeType.Int: {return 70f;}
-                case AttributeType.Float: {return 70f;}
-                case AttributeType.String: {return 70f;}
-                case AttributeType.Vector2: {return 70f;}
-                case AttributeType.Vector3: {return 70f;}
-                case AttributeType.Vector4: {return 70f;}
-                case AttributeType.Color: {return 70f;}
-                case AttributeType.Rect: {return 86f;}
-                //case AttributeType.Matrix4x4: {return 86f;}
-                case AttributeType.Object: {return 70f;}
-                case AttributeType.GameObject: {return 70f;}
-                case AttributeType.Component: {return 70f;}
-                default: {return 54f;}
+                case AttributeType.Int: {return 54f;}
+                case AttributeType.Float: {return 54f;}
+                case AttributeType.String: {return 54f;}
+                case AttributeType.Vector2: {return 54f;}
+                case AttributeType.Vector3: {return 54f;}
+                case AttributeType.Vector4: {return 54f;}
+                case AttributeType.Color: {return 54f;}
+                case AttributeType.Rect: {return 76f;}
+                //case AttributeType.Matrix4x4: {return 76f;}
+                case AttributeType.Object: {return 54f;}
+                case AttributeType.GameObject: {return 54f;}
+                case AttributeType.Component: {return 54f;}
+                default: {return 38f;}
             }
         }
         else return 16f;
@@ -189,12 +178,14 @@ public class AttributeDrawer: PropertyDrawer {
     public override void OnGUI(Rect position, SerializedProperty property, GUIContent label) {
         EditorGUI.BeginProperty(position, label, property);
         var _name = property.FindPropertyRelative("name");
-        property.isExpanded = EditorGUI.Foldout(new Rect(position.x, position.y, position.width, 16f), property.isExpanded, _name.stringValue, true, EditorStyles.foldout);
+        var foldoutLabel = _name.stringValue;
+        if (foldoutLabel == null || foldoutLabel == "") foldoutLabel = "Unnamed attribute";
+        property.isExpanded = EditorGUI.Foldout(new Rect(position.x, position.y, property.isExpanded ? 19f: position.width, 16f), property.isExpanded, property.isExpanded ? "": foldoutLabel, true, EditorStyles.foldout);
         if (property.isExpanded) {
-            _name.stringValue = EditorGUI.TextField(new Rect(position.x, position.y + 16f, position.width, 16f), _name.stringValue);
+            _name.stringValue = EditorGUI.TextField(new Rect(position.x, position.y, position.width, 16f), _name.stringValue);
             var _type = property.FindPropertyRelative("type");
             var attrType = (AttributeType)_type.enumValueIndex;
-            var selType = (AttributeType)EditorGUI.EnumPopup(new Rect(position.x, position.y + 32, position.width, 16f), "Type", attrType);
+            var selType = (AttributeType)EditorGUI.EnumPopup(new Rect(position.x, position.y + 16f, position.width, 16f), "Type", attrType);
             var _value = property.FindPropertyRelative("_value");
             if (selType != attrType) {
                 _type.enumValueIndex = (int)selType;
@@ -252,64 +243,65 @@ public class AttributeDrawer: PropertyDrawer {
                         break;
                     }
                 }
+                property.serializedObject.ApplyModifiedPropertiesWithoutUndo();
+                EditorUtility.SetDirty(property.serializedObject.targetObject);
             }
-            _value = property.FindPropertyRelative("_value");
             switch (selType) {
                 case AttributeType.None: {
                     break;
                 }
                 case AttributeType.Int: {
                     var i = _value.FindPropertyRelative("_value");
-                    i.intValue = EditorGUI.IntField(new Rect(position.x, position.y + 50f, position.width, 16f), "Value", i.intValue);
+                    i.intValue = EditorGUI.IntField(new Rect(position.x, position.y + 34f, position.width, 16f), "Value", i.intValue);
                     break;
                 }
                 case AttributeType.Float: {
                     var f = _value.FindPropertyRelative("_value");
-                    f.floatValue = EditorGUI.FloatField(new Rect(position.x, position.y + 50f, position.width, 16f), "Value", f.floatValue);
+                    f.floatValue = EditorGUI.FloatField(new Rect(position.x, position.y + 34f, position.width, 16f), "Value", f.floatValue);
                     break;
                 }
                 case AttributeType.String: {
                     var str = _value.FindPropertyRelative("_value");
-                    str.stringValue = EditorGUI.TextField(new Rect(position.x, position.y + 50f, position.width, 16f), "Value", str.stringValue);
+                    str.stringValue = EditorGUI.TextField(new Rect(position.x, position.y + 34f, position.width, 16f), "Value", str.stringValue);
                     break;
                 }
                 case AttributeType.Vector2: {
                     var vec2 = _value.FindPropertyRelative("_value");
-                    vec2.vector2Value = EditorGUI.Vector2Field(new Rect(position.x, position.y + 50f, position.width, 16f), "Value", vec2.vector2Value);
+                    vec2.vector2Value = EditorGUI.Vector2Field(new Rect(position.x, position.y + 34f, position.width, 16f), "Value", vec2.vector2Value);
                     break;
                 }
                 case AttributeType.Vector3: {
                     var vec3 = _value.FindPropertyRelative("_value");
-                    vec3.vector3Value = EditorGUI.Vector3Field(new Rect(position.x, position.y + 50f, position.width, 16f), "Value", vec3.vector3Value);
+                    vec3.vector3Value = EditorGUI.Vector3Field(new Rect(position.x, position.y + 34f, position.width, 16f), "Value", vec3.vector3Value);
                     break;
                 }
                 case AttributeType.Vector4: {
                     var vec4 = _value.FindPropertyRelative("_value");
-                    vec4.vector4Value = EditorGUI.Vector4Field(new Rect(position.x, position.y + 50f, position.width, 16f), "Value", vec4.vector4Value);
+                    vec4.vector4Value = EditorGUI.Vector4Field(new Rect(position.x, position.y + 34f, position.width, 16f), "Value", vec4.vector4Value);
                     break;
                 }
                 case AttributeType.Color: {
                     var col = _value.FindPropertyRelative("_value");
-                    col.colorValue = EditorGUI.ColorField(new Rect(position.x, position.y + 50f, position.width, 16f), "Value", col.colorValue);
+                    col.colorValue = EditorGUI.ColorField(new Rect(position.x, position.y + 34f, position.width, 16f), "Value", col.colorValue);
                     break;
                 }
                 case AttributeType.Rect: {
                     var rect = _value.FindPropertyRelative("_value");
-                    rect.rectValue = EditorGUI.RectField(new Rect(position.x, position.y + 50f, position.width, 32f), "Value", rect.rectValue);
+                    rect.rectValue = EditorGUI.RectField(new Rect(position.x, position.y + 34f, position.width, 32f), "Value", rect.rectValue);
                     break;
                 }
                 case AttributeType.Object: {
                     var obj = _value.FindPropertyRelative("_value");
-                    obj.objectReferenceValue = EditorGUI.ObjectField(new Rect(position.x, position.y + 50f, position.width, 16f), "Value", obj.objectReferenceValue, typeof(UnityEngine.Object), true);
+                    obj.objectReferenceValue = EditorGUI.ObjectField(new Rect(position.x, position.y + 34f, position.width, 16f), "Value", obj.objectReferenceValue, typeof(UnityEngine.Object), true);
                     break;
                 }
                 case AttributeType.GameObject: {
-                    EditorGUI.PropertyField(new Rect(position.x, position.y + 50f, position.width, 16f), _value.FindPropertyRelative("_value"));
+                    EditorGUI.PropertyField(new Rect(position.x, position.y + 34f, position.width, 16f), _value.FindPropertyRelative("_value"));
                     break;
                 }
                 case AttributeType.Component: {
                     var comp = _value.FindPropertyRelative("_value");
-                    comp.objectReferenceValue = EditorGUI.ObjectField(new Rect(position.x, position.y + 50f, position.width, 16f), "Value", comp.objectReferenceValue, typeof(Component), true);
+                    comp.objectReferenceValue = EditorGUI.ObjectField(new Rect(position.x, position.y + 34f, position.width, 16f), "Value", comp.objectReferenceValue, typeof(Component), true);
                     break;
                 }
             }
